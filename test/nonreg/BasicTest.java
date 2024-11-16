@@ -7,18 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 import net.sourceforge.plantuml.FileFormat;
 import net.sourceforge.plantuml.FileFormatOption;
 import net.sourceforge.plantuml.SourceStringReader;
 import net.sourceforge.plantuml.TitledDiagram;
 import net.sourceforge.plantuml.core.DiagramDescription;
+
+import org.junit.jupiter.api.Assertions;
 
 /*
  * All non-regression tests must extends BasicTest class.
@@ -43,14 +45,22 @@ public class BasicTest {
 		TitledDiagram.FORCE_SMETANA = true;
 	}
 
-	protected void checkImage(final String expectedDescription) throws IOException, UnsupportedEncodingException {
+	private void checkImage(final String expectedDescription, BiConsumer<String, String> assertFunction) throws IOException {
 		final String actualResult = runPlantUML(expectedDescription);
 		if (FORCE_RESULT_GENERATION
-				|| (ENABLE_RESULT_GENERATION_IF_NONE_PRESENT && Files.exists(getResultFile()) == false)) {
+						|| (ENABLE_RESULT_GENERATION_IF_NONE_PRESENT && !Files.exists(getResultFile()))) {
 			generatedResultJavaFile(actualResult, actualResult.getBytes(UTF_8));
 		}
 		final String imageExpectedResult = readTripleQuotedString(getResultFile());
-		assertEquals(imageExpectedResult, actualResult);
+		assertFunction.accept(imageExpectedResult, actualResult);
+	}
+
+	protected void checkImage(final String expectedDescription) throws IOException {
+		checkImage(expectedDescription, Assertions::assertEquals);
+	}
+
+	protected void checkImageContains(final String expectedDescription) throws IOException {
+		checkImage(expectedDescription, (actual, expected) -> assertTrue(actual.contains(expected)));
 	}
 
 	private void generatedResultJavaFile(String actualResult, byte[] bytes) throws IOException {
@@ -85,7 +95,7 @@ public class BasicTest {
 		return Paths.get(getLocalFolder(), getClass().getSimpleName() + ".java");
 	}
 
-	protected String runPlantUML(String expectedDescription) throws IOException, UnsupportedEncodingException {
+	protected String runPlantUML(String expectedDescription) throws IOException {
 		final String diagramText = readTripleQuotedString(getDiagramFile());
 		final SourceStringReader ssr = new SourceStringReader(diagramText, UTF_8);
 		final ByteArrayOutputStream baos = new ByteArrayOutputStream();
