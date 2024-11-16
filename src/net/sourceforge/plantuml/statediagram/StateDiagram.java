@@ -5,12 +5,12 @@
  * (C) Copyright 2009-2024, Arnaud Roques
  *
  * Project Info:  https://plantuml.com
- * 
+ *
  * If you like this project or if you find it useful, you can support us at:
- * 
+ *
  * https://plantuml.com/patreon (only 1$ per month!)
  * https://plantuml.com/paypal
- * 
+ *
  * This file is part of PlantUML.
  *
  * PlantUML is free software; you can redistribute it and/or modify it
@@ -30,7 +30,7 @@
  *
  *
  * Original Author:  Arnaud Roques
- * Contribution   :  Serge Wenger 
+ * Contribution   :  Serge Wenger
  *
  */
 package net.sourceforge.plantuml.statediagram;
@@ -74,17 +74,37 @@ public class StateDiagram extends AbstractEntityDiagram {
 		if (code.getData() == null)
 			return true;
 
-		final Entity existing = code.getData();
-		if (getCurrentGroup().getGroupType() == GroupType.CONCURRENT_STATE
-				&& getCurrentGroup() != existing.getParentContainer())
-			return false;
+		final Entity target = code.getData();
+		Entity targetConcurrentParent = getContainingConcurrentState(target);
 
-		if (existing.getParentContainer() != null
-				&& existing.getParentContainer().getGroupType() == GroupType.CONCURRENT_STATE
-				&& getCurrentGroup() != existing.getParentContainer())
-			return false;
+		if (targetConcurrentParent != null) {
+			return doesContainRecursively(getCurrentGroup(), targetConcurrentParent);
+		} else {
+			return true;
+		}
+	}
 
-		return true;
+	private boolean doesContainRecursively(Entity child, Entity parent) {
+		if (child == parent) {
+			return true;
+		}
+		Entity directParent = child.getParentContainer();
+		if (directParent != null) {
+			if (directParent == parent) {
+				return true;
+			} else {
+				return doesContainRecursively(child.getParentContainer(), parent);
+			}
+		}
+		return false;
+	}
+
+	private Entity getContainingConcurrentState(Entity state) {
+		if (state == null || (state.isGroup() && state.getGroupType() == GroupType.CONCURRENT_STATE)) {
+			return state;
+		} else {
+			return getContainingConcurrentState(state.getParentContainer());
+		}
 	}
 
 	public Entity getStart() {
